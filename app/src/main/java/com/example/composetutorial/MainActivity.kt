@@ -1,13 +1,8 @@
 package com.example.composetutorial
 
-
-
-
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -18,7 +13,6 @@ import com.example.composetutorial.ui.theme.ComposeTutorialTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
-import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
 import android.content.res.Configuration
-import android.provider.Settings
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
@@ -40,24 +33,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import com.example.composetutorial.SampleData
 import androidx.compose.material3.Button
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 // import androidx.compose.foundation.layout.FlowRowScopeInstance.align
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.composetutorial.screens.SettingsScreen
+import androidx.activity.viewModels
+import coil.compose.rememberImagePainter
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+
 
 @Composable
-fun Conversation(messages: List<Message>) {
+fun Conversation(messages: List<Message>, profilePicture: String, userName: String) {
     LazyColumn {
         items(messages) { message ->
-            MessageCard(message)
+            MessageCard(msg = message, profilePicture = profilePicture, userName = userName)
         }
     }
 }
@@ -66,13 +60,22 @@ fun Conversation(messages: List<Message>) {
 @Composable
 fun PreviewConversation() {
     ComposeTutorialTheme {
-        Conversation(SampleData.conversationSample)
+
+        val context = LocalContext.current
+        val mainViewModel = remember { MainViewModel(context) }
+        val userProfilePicture by mainViewModel.userProfilePicture.collectAsState(initial = "defaultUrl")
+        val userName by mainViewModel.userName.collectAsState(initial = "Default Name")
+
+        Conversation(SampleData.conversationSample, profilePicture = userProfilePicture, userName = userName)
     }
 }
 
 
 
 class MainActivity : ComponentActivity() {
+
+    private val mainViewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -80,22 +83,36 @@ class MainActivity : ComponentActivity() {
                 // create a NavController by calling rememberNavController
                 val navController = androidx.navigation.compose.rememberNavController()
 
+
+                val userProfilePicture by mainViewModel.userProfilePicture.collectAsState(initial = "defaultUrl")
+                val userName by mainViewModel.userName.collectAsState(initial = "Default Name")
+
                 // set up navHost
                 androidx.navigation.compose.NavHost(navController = navController, startDestination = "conversation")
                 {
                     composable("conversation") {
-                        com.example.composetutorial.Conversation(SampleData.conversationSample)
+                        Conversation(SampleData.conversationSample, profilePicture = userProfilePicture, userName = userName)
                     }
                     composable("settings") {
                         com.example.composetutorial.screens.SettingsScreen(navController)
+                    }
+                    composable("profile") {
+                        val context = LocalContext.current
+                        com.example.composetutorial.screens.ProfileScreen(viewModel = mainViewModel, navController = navController, context = context)
                     }
                 }
 
                 // create the button that takes you to the magic screen..
                 val currentDestination = navController.currentBackStackEntryAsState().value?.destination?.route
 
-                // make it so that the other button disappears when in the "SettingsScreen"
+                // make it so that the other button disappears when in the "SettingsScreen" or "ProfileScreen"
                 if (currentDestination == "conversation") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                     Button(
                         onClick = { navController.navigate("settings") },
                         modifier = Modifier
@@ -103,25 +120,39 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text("Press me...")
                     }
-                }
 
+                    Button(
+                        onClick = { navController.navigate("profile") },
+                        modifier = Modifier
+                        .padding(16.dp)
+                    ) {
+                        Text("Profile")
+                    }
+                    }
+                }
                 }
             }
         }
     }
 
-data class Message(val author: String, val body: String)
+data class Message(val body: String)
 
 @Composable
-fun MessageCard(msg: Message) {
+fun MessageCard(msg: Message, profilePicture: String, userName: String) {
     Row(modifier = Modifier.padding(all = 8.dp)){
         Image(
-            painter = painterResource(R.drawable.chunchu),
+            painter = rememberAsyncImagePainter(
+                ImageRequest.Builder(LocalContext.current).data(data = profilePicture).apply(block = fun ImageRequest.Builder.() {
+                    crossfade(true)
+                    placeholder(R.drawable.chunchu)
+                }).build()
+            ),
             contentDescription = "Contact profile picture",
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape),
+            contentScale = ContentScale.Crop
         )
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -136,7 +167,7 @@ fun MessageCard(msg: Message) {
 
         Column(modifier = Modifier.clickable { isExpanded = !isExpanded}) {
             Text(
-                text = msg.author,
+                text = userName,
                 color = MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.titleSmall
             )
@@ -161,8 +192,6 @@ fun MessageCard(msg: Message) {
             }
         }
     }
-
-
 }
 
 
@@ -178,10 +207,15 @@ fun MessageCard(msg: Message) {
 @Composable
 fun PreviewMessageCard() {
     ComposeTutorialTheme {
+        val context = LocalContext.current
+
+        val mainViewModel = remember { MainViewModel(context) }
+
+        val userProfilePicture by mainViewModel.userProfilePicture.collectAsState(initial = "defaultUrl")
+        val userName by mainViewModel.userName.collectAsState(initial = "Default Name")
+
         Surface {
-            MessageCard(msg = Message("Lexi", "Hey, take a look at Jetpack Compose, it's great!")
-            )
+            MessageCard(msg = Message("Hey, take a look at Jetpack Compose, it's great!"), profilePicture = userProfilePicture, userName = userName)
         }
     }
-
 }

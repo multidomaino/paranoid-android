@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "587691819359",
+    "project_id": "mc-aino",
+    "storage_bucket": "mc-aino.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587691819359:android:ef5ed69f13e805438cf6ea",
+        "android_client_info": {
+          "package_name": "com.example.composetutorial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfTKME37nDA7SkQR5M5GzWqDFuHXGjopo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
