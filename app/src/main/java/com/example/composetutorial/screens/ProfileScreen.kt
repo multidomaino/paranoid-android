@@ -1,11 +1,13 @@
 package com.example.composetutorial.screens
 
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
@@ -48,6 +51,8 @@ import com.example.composetutorial.R
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import android.Manifest
+
 
 
 
@@ -63,8 +68,7 @@ fun ProfileScreen(viewModel: MainViewModel, navController: NavController? = null
 
 
     Column(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.Start
     ) {
@@ -75,24 +79,37 @@ fun ProfileScreen(viewModel: MainViewModel, navController: NavController? = null
         LoadImage(userProfilePictureUri = userProfilePictureUri,
             onProfilePictureChange = { newUrl -> viewModel.updateUserProfilePicture(newUrl)}, mainViewModel = viewModel)
         EnableNotificationsButton(context)
+
+
     }
 }
 
 @Composable
 fun EnableNotificationsButton(context: Context) {
     Button(
-        onClick = { openNotificationSettings(context) },
+        onClick = {
+            if (Build.VERSION.SDK_INT >= 33) {
+                val activity = context as? Activity
+                if (activity != null) {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        100
+                    )
+                }
+            } else {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                val uri = Uri.fromParts("package", context.packageName, null)
+                intent.data = uri
+                context.startActivity(intent)
+            }
+        },
         modifier = Modifier.padding(16.dp)
     ) {
         Text(text = "Enable notifications")
     }
 }
 
-private fun openNotificationSettings(context: Context) {
-    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-    intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-    context.startActivity(intent)
-}
 
 @Composable
 fun LoadImage(userProfilePictureUri: String, onProfilePictureChange: (String) -> Unit, mainViewModel: MainViewModel) {

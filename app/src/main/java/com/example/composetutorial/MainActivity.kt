@@ -1,5 +1,7 @@
 package com.example.composetutorial
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +25,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
 import android.content.res.Configuration
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
@@ -43,9 +49,15 @@ import coil.compose.rememberImagePainter
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-
+import com.example.composetutorial.screens.ProfileScreen
+import com.example.composetutorial.screens.SettingsScreen
+import android.Manifest
 
 @Composable
 fun Conversation(messages: List<Message>, profilePicture: String, userName: String) {
@@ -64,7 +76,7 @@ fun PreviewConversation() {
         val context = LocalContext.current
         val mainViewModel = remember { MainViewModel(context) }
         val userProfilePicture by mainViewModel.userProfilePicture.collectAsState(initial = "defaultUrl")
-        val userName by mainViewModel.userName.collectAsState(initial = "Default Name")
+        val userName by mainViewModel.userName.collectAsState(initial = "Chun-Li")
 
         Conversation(SampleData.conversationSample, profilePicture = userProfilePicture, userName = userName)
     }
@@ -78,27 +90,43 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    100
+                )
+            }
+        }
+
         setContent {
             ComposeTutorialTheme {
                 // create a NavController by calling rememberNavController
-                val navController = androidx.navigation.compose.rememberNavController()
+                val navController = rememberNavController()
 
 
                 val userProfilePicture by mainViewModel.userProfilePicture.collectAsState(initial = "defaultUrl")
                 val userName by mainViewModel.userName.collectAsState(initial = "Default Name")
 
                 // set up navHost
-                androidx.navigation.compose.NavHost(navController = navController, startDestination = "conversation")
+                NavHost(navController = navController, startDestination = "conversation")
                 {
                     composable("conversation") {
                         Conversation(SampleData.conversationSample, profilePicture = userProfilePicture, userName = userName)
                     }
                     composable("settings") {
-                        com.example.composetutorial.screens.SettingsScreen(navController)
+                        SettingsScreen(navController)
                     }
                     composable("profile") {
                         val context = LocalContext.current
-                        com.example.composetutorial.screens.ProfileScreen(viewModel = mainViewModel, navController = navController, context = context)
+                        ProfileScreen(viewModel = mainViewModel, navController = navController, context = context)
                     }
                 }
 
@@ -132,8 +160,11 @@ class MainActivity : ComponentActivity() {
                 }
                 }
             }
-        }
+
+        startService(Intent(this, SensorService::class.java))
+
     }
+}
 
 data class Message(val body: String)
 
